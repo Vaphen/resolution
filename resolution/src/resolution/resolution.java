@@ -1,12 +1,9 @@
 package resolution;
 
-import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.List;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Vector;
@@ -14,6 +11,7 @@ import java.util.Vector;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
 public class resolution extends JFrame implements ActionListener {
@@ -41,6 +39,7 @@ public class resolution extends JFrame implements ActionListener {
 
 	public static void main(String[] args) {
 		resolution GUI = new resolution();
+		GUI.setDefaultCloseOperation(EXIT_ON_CLOSE);
 	}
 
 	@Override
@@ -52,92 +51,98 @@ public class resolution extends JFrame implements ActionListener {
 		input = input.substring(1, input.length());
 		input = input.substring(0, input.length() - 1);
 
-		int numberOfOpenBrackets = input.length()
-				- input.replace("{", "").length();
-		int numberOfCloseBrackets = input.length()
-				- input.replace("}", "").length();
-		if (numberOfOpenBrackets != numberOfCloseBrackets) {
+		// kick out unimportant chars
+		input = input.replace(" ", "").replace(",", "");
+
+		/*
+		 * Test if Set matches specific patterns Scheme: {ABC}{-A-BC}{CD}
+		 */
+		if (!input.matches("([{]([\\-]*[¬]*[A-Z])+[}])+")) {
 			inputField.setText("Fehler in der Eingabe.");
 			return;
 		}
 
-		// kick out unimportant chars
-		input = input.replace(" ", "").replace(",", "");
-
-		for (int i = 0; i < input.length(); i++) {
-			/*
-			 * Test if Set matches specifig patterns Scheme: {ABC}{-A-BC}{CD}
-			 */
-			if (!input.matches("([{]([\\-]*[A-Z])+[}])+")) {
-				inputField.setText("Fehler in der Eingabe.");
-				return;
-			}
-		}
-
-		Vector vectorOfSets = new Vector();
+		Vector<Vector<Character>> vectorOfSets = new Vector<Vector<Character>>();
 		int indexOfSets = 0;
 		for (int i = 0; i < input.length(); i++) {
 			if (input.charAt(i) == '{') {
-				vectorOfSets.add(new HashSet<Character>());
+				vectorOfSets.add(new Vector<Character>());
 				continue;
 			} else if (input.charAt(i) == '}') {
 				indexOfSets++;
 				continue;
 			} else {
-				HashSet<Character> latestHashSet = (HashSet<Character>) vectorOfSets
+				Vector<Character> latestVector = (Vector<Character>) vectorOfSets
 						.elementAt(indexOfSets);
-				if (input.charAt(i) != '-') {
-					latestHashSet.add(input.charAt(i));
+				if (input.charAt(i) != '-' && input.charAt(i) != '¬') {
+					latestVector.add(input.charAt(i));
 				} else {
 					i++;
-					latestHashSet.add(Character.toLowerCase(input.charAt(i)));
+					latestVector.add(Character.toLowerCase(input.charAt(i)));
 				}
 			}
 		}
-		for (int i = 0; i < vectorOfSets.size(); i++) {
-			HashSet<Character> hashSet = (HashSet<Character>) vectorOfSets
-					.elementAt(i);
-			for (char ch : hashSet) {
-				System.out.println(i + ":" + ch);
-			}
-		}
+
 		vectorOfSets = calculateResolution(vectorOfSets);
-		for(int i = 0; i < vectorOfSets.size(); i++){
-			System.out.print("{");
-			for(char p : (HashSet<Character>) vectorOfSets.elementAt(i)){
-					System.out.print(p);
+
+		String outputSet = "";
+		outputSet += "{";
+		for (Vector<Character> vCh : vectorOfSets) {
+			if(vCh.size() == 0){
+				JOptionPane.showMessageDialog(this, "Diese Formel ist unerfüllbar.", "Unerfüllbare Formel", JOptionPane.INFORMATION_MESSAGE);
 			}
-			System.out.print("}");
+			outputSet += "{";
+			for (char p : vCh) {
+				if (Character.isLowerCase(p)) {
+					outputSet += "¬";
+				}
+				outputSet += Character.toUpperCase(p);
+			}
+			outputSet += "}";
 		}
+		outputSet += "}";
+		inputField.setText(outputSet);
 	}
 
-	private Vector calculateResolution(Vector vectorOfSets) {
-		int vecSize = vectorOfSets.size();
-		for (int i = 0; i < vecSize; i++) {
-			System.out.println(vecSize);
-			// define primary clause
-			HashSet<Character> primClause = (HashSet<Character>) vectorOfSets
-					.elementAt(i);
-			for (int j = i; j < vecSize; j++) {
-				System.out.println(i + ":" + j);
+	private Vector<Vector<Character>> calculateResolution(
+			Vector<Vector<Character>> vectorOfSets) {
+		for (int i = 0; i < vectorOfSets.size(); i++) {
+			for (int j = i; j < vectorOfSets.size(); j++) {
+				// define primary clause
+				Vector<Character> primClause = (Vector<Character>) vectorOfSets
+						.elementAt(i);
 				// define second clause
-				HashSet<Character> secClause = (HashSet<Character>) vectorOfSets
+				Vector<Character> secClause = (Vector<Character>) vectorOfSets
 						.elementAt(j);
 				// go through all letters
-				for (char primClauseChar : primClause) {
-					for (char secClauseChar : secClause) {
-						if (primClauseChar == (char)(secClauseChar + 32)
-								|| primClauseChar == (char)(secClauseChar - 32)) {
-							HashSet<Character> tmpPrimHashSet = new HashSet<Character>(primClause);
-							tmpPrimHashSet.remove(primClauseChar);
-							HashSet<Character> tmpSecHashSet = new HashSet<Character>(secClause);
-							tmpSecHashSet.remove(secClauseChar);
-							HashSet<Character> newHashSet = new HashSet<Character>(tmpPrimHashSet);
-							newHashSet.addAll(tmpSecHashSet);
-							// add the set to the vector if it doesnt exists
-							if(!vectorOfSets.contains(newHashSet)){
-								vectorOfSets.add(newHashSet);
-								++vecSize;
+				Vector<Character> newSet;
+				for (int primClauseIter = 0; primClauseIter < primClause.size(); primClauseIter++) {
+					for (int secClauseIter = 0; secClauseIter < secClause
+							.size(); secClauseIter++) {
+						if (primClause.elementAt(primClauseIter) == (char) (secClause
+								.elementAt(secClauseIter) + 32)
+								|| primClause.elementAt(primClauseIter) == (char) (secClause
+										.elementAt(secClauseIter) - 32)) {
+
+							newSet = new Vector<Character>();
+							newSet.addAll(primClause);
+							newSet.addAll(secClause);
+							newSet.removeElement(primClause
+									.elementAt(primClauseIter));
+							newSet.removeElement(secClause
+									.elementAt(secClauseIter));
+
+							// add the set to the vector if it doesn't exists
+
+							Set<Character> set = new HashSet<Character>();
+							set.addAll(newSet);
+							newSet.clear();
+							newSet.addAll(set);
+							Collections.sort(newSet);
+
+							if (!vectorOfSets.contains(newSet)) {
+								// System.out.println(newSet.toString());
+								vectorOfSets.add(newSet);
 								calculateResolution(vectorOfSets);
 							}
 						}
