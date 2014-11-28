@@ -1,6 +1,7 @@
 package resolution;
 
-import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Collections;
@@ -26,9 +27,9 @@ public class resolution extends JFrame implements ActionListener {
 	 * Important elements
 	 */
 	private JLabel inputLabel;
-//	private JLabel resultLabel;
+	private JLabel resultLabel;
 	private JTextField inputField;
-//	private JTextField resultField;
+	private JTextField resultField;
 	private JButton calcButton;
 
 	/**
@@ -36,17 +37,41 @@ public class resolution extends JFrame implements ActionListener {
 	 */
 	public resolution() {
 		super("Resolution");
-		calcButton = new JButton("Berechnen");
-		calcButton.addActionListener(this);
-		inputField = new JTextField("", 40);
+		setLayout(new GridBagLayout());
+		GridBagConstraints c = new GridBagConstraints();
+		c.fill = GridBagConstraints.HORIZONTAL;
+		
+		
 		inputLabel = new JLabel("Resolutionsmenge:");
-	//	resultField = new JTextField();
-		setLayout(new FlowLayout());
+		c.gridx = 0;
+		c.gridy = 0;
+		add(inputLabel, c);
+		
+		inputField = new JTextField("", 40);
+		c.gridx = 1;
+		c.gridy = 0;
+		add(inputField, c);
+		
+		resultLabel = new JLabel("Ergebnis:");
+		c.gridx = 0;
+		c.gridy = 1;
+		add(resultLabel, c);
+		
+		resultField = new JTextField("", 40);
+		resultField.setEditable(false);
+		c.gridx = 1;
+		c.gridy = 1;
+		add(resultField, c);
+		
+		calcButton = new JButton("Berechnen");
+		c.gridheight = 2;
+		c.gridx = 2;
+		c.gridy = 0;
+		calcButton.addActionListener(this);
+		add(calcButton, c);
+		
 		setLocationRelativeTo(null);
-
-		add(inputLabel);
-		add(inputField);
-		add(calcButton);
+		
 		pack();
 		setVisible(true);
 	}
@@ -67,6 +92,7 @@ public class resolution extends JFrame implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String input = inputField.getText();
+		if(input.length() <= 4) return;
 		/*
 		 * delete first and last bracket
 		 */
@@ -80,7 +106,7 @@ public class resolution extends JFrame implements ActionListener {
 		 * Test if Set matches specific patterns Scheme: {ABC}{-A-BC}{CD}
 		 */
 		if (!input.matches("([{]([\\-]*[¬]*[A-Z])+[}])+")) {
-			inputField.setText("Fehler in der Eingabe.");
+			resultField.setText("Fehler in der Eingabe.");
 			return;
 		}
 
@@ -121,9 +147,6 @@ public class resolution extends JFrame implements ActionListener {
 			/*
 			 * If the set is empty it is a unfulfillable formula
 			 */
-			if(vCh.size() == 0){
-				JOptionPane.showMessageDialog(this, "Diese Formel ist unerfüllbar.", "Unerfüllbare Formel", JOptionPane.INFORMATION_MESSAGE);
-			}
 			outputSet += "{";
 			for (char p : vCh) {
 				if (Character.isLowerCase(p)) {
@@ -132,14 +155,21 @@ public class resolution extends JFrame implements ActionListener {
 				outputSet += Character.toUpperCase(p);
 				outputSet += ",";
 			}
-			outputSet = outputSet.substring(0, outputSet.length() - 1);
+			if(!(outputSet.charAt(outputSet.length() - 1) == '{')){
+				outputSet = outputSet.substring(0, outputSet.length() - 1);
+			}
+			
 			outputSet += "},";
 		}
 		
 		outputSet = outputSet.substring(0, outputSet.length() - 1);
 		outputSet += "}";
-
-		inputField.setText(outputSet);
+		if(outputSet.contains("{}")){
+			JOptionPane.showMessageDialog(this, "Diese Formel ist unerfüllbar.", "Unerfüllbare Formel", JOptionPane.INFORMATION_MESSAGE);
+		}else{
+			JOptionPane.showMessageDialog(this, "Diese Formel ist erfüllbar.", "Erfüllbare Formel", JOptionPane.INFORMATION_MESSAGE);
+		}
+		resultField.setText(outputSet);
 	}
 
 	private Vector<Vector<Character>> calculateResolution(Vector<Vector<Character>> vectorOfSets) {
@@ -231,10 +261,6 @@ public class resolution extends JFrame implements ActionListener {
 							// add the set to the vector if it doesn't exist
 							if (!vectorOfSets.contains(newSet)) {
 								vectorOfSets.add(newSet);
-								/*
-								 * TODO: check if the program works without this line
-								 */
-								//calculateResolution(vectorOfSets);
 							}
 						}
 					}
